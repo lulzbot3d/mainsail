@@ -170,7 +170,7 @@
                                     <v-btn
                                         :disabled="['printing'].includes(printer_state)"
                                         :loading="loadings.includes('homeX')"
-                                        :color="homedAxes.includes('xyz') ? '' : '#7b7b7b'"
+                                        :color="homedAxes.includes('x') ? '' : '#7b7b7b'"
                                         tile
                                         height="30"
                                         class="btnMinWidthAuto w-100"
