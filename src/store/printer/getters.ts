@@ -7,6 +7,7 @@ import {
     PrinterStateFan,
     PrinterStateFilamentSensors,
     PrinterStateMiscellaneous,
+    PrinterStateMiscellaneousSensor,
     PrinterStateMcu,
     PrinterStateMacro,
     PrinterGetterObject,
@@ -141,24 +142,31 @@ export const getters: GetterTree<PrinterState, RootState> = {
 
     getMacros: (state) => {
         const array: PrinterStateMacro[] = []
-        const config = state.configfile?.config ?? {}
         const settings = state.configfile?.settings ?? null
+        const printerGcodes = state.gcode?.commands ?? {}
 
-        Object.keys(config)
-            .filter((prop) => prop.toLowerCase().startsWith('gcode_macro'))
+        const prefix = 'gcode_macro '
+        const prefixLength = prefix.length
+
+        Object.keys(state)
+            .filter((prop) => prop.toLowerCase().startsWith(prefix))
             .forEach((prop) => {
-                const name = prop.replace('gcode_macro ', '')
+                const name = prop.slice(prefixLength)
+                const printerGcode = printerGcodes[name.toUpperCase()] ?? {}
+
+                // remove macros with a '_' as first char
                 if (name.startsWith('_')) return
 
+                // remove macros with rename_existing in the config
                 const propLower = prop.toLowerCase()
-                const propSettings = settings[propLower]
+                const propSettings = settings[propLower] ?? {}
                 if ('rename_existing' in propSettings) return
 
                 const variables = state[prop] ?? {}
 
                 array.push({
                     name,
-                    description: settings[propLower].description ?? null,
+                    description: printerGcode?.help ?? null,
                     prop: propSettings,
                     params: getMacroParams(propSettings),
                     variables,
@@ -197,86 +205,6 @@ export const getters: GetterTree<PrinterState, RootState> = {
             if (a.controllable < b.controllable) return 1
             if (a.controllable > b.controllable) return -1
 
-            const nameA = a.name.toUpperCase()
-            const nameB = b.name.toUpperCase()
-
-            if (nameA < nameB) return -1
-            if (nameA > nameB) return 1
-
-            return 0
-        })
-    },
-
-    getLights: (state, getters) => {
-        const lights: PrinterStateLight[] = []
-        const supportedObjects = ['dotstar', 'led', 'neopixel', 'pca9533', 'pca9632']
-        const objects = getters.getPrinterObjects(supportedObjects)
-
-        objects
-            .filter((object: PrinterGetterObject) => {
-                return !object.name.startsWith('_')
-            })
-            .forEach((object: PrinterGetterObject) => {
-                let colorOrder = 'RGB'
-                let singleChannelTarget = null
-                const colorData = object.state.color_data ?? []
-
-                if ('color_order' in object.settings) colorOrder = object.settings.color_order[0] ?? ''
-
-                if (object.type === 'led') {
-                    colorOrder = ''
-                    if ('red_pin' in object.config) colorOrder += 'R'
-                    if ('green_pin' in object.config) colorOrder += 'G'
-                    if ('blue_pin' in object.config) colorOrder += 'B'
-                    if ('white_pin' in object.config) colorOrder += 'W'
-                }
-
-                let initialRed = object.settings.initial_red ?? null
-                if (!('initial_red' in object.config)) initialRed = null
-
-                let initialGreen = object.settings.initial_green ?? null
-                if (!('initial_green' in object.config)) initialGreen = null
-
-                let initialBlue = object.settings.initial_blue ?? null
-                if (!('initial_blue' in object.config)) initialBlue = null
-
-                let initialWhite = object.settings.initial_white ?? null
-                if (!('initial_white' in object.config)) initialWhite = null
-
-                if (object.type === 'led' && colorOrder.length === 1) {
-                    const firstColorData = colorData[0] ?? []
-
-                    switch (colorOrder) {
-                        case 'R':
-                            singleChannelTarget = firstColorData[0] ?? 0
-                            break
-                        case 'G':
-                            singleChannelTarget = firstColorData[1] ?? 0
-                            break
-                        case 'B':
-                            singleChannelTarget = firstColorData[2] ?? 0
-                            break
-                        case 'W':
-                            singleChannelTarget = firstColorData[3] ?? 0
-                            break
-                    }
-                }
-
-                lights.push({
-                    name: object.name,
-                    type: object.type as PrinterStateLight['type'],
-                    chainCount: object.settings.chain_count ?? 1,
-                    colorOrder,
-                    initialRed,
-                    initialGreen,
-                    initialBlue,
-                    initialWhite,
-                    colorData,
-                    singleChannelTarget,
-                })
-            })
-
-        return lights.sort((a, b) => {
             const nameA = a.name.toUpperCase()
             const nameB = b.name.toUpperCase()
 
@@ -372,6 +300,53 @@ export const getters: GetterTree<PrinterState, RootState> = {
         })
     },
 
+    getMiscellaneousSensors: (state) => {
+        const output: PrinterStateMiscellaneousSensor[] = []
+        const supportedObjects = ['load_cell']
+
+        for (const [key, value] of Object.entries(state)) {
+            const nameSplit = key.split(' ')
+
+            if (!supportedObjects.includes(nameSplit[0])) continue
+            const name = nameSplit.length > 1 ? nameSplit[1] : nameSplit[0]
+            if (name.startsWith('_')) continue
+
+            const basis = {
+                name: name,
+                type: nameSplit[0],
+                value: 'value' in value ? value.value : null,
+                unit: 'unit' in value ? value.unit : '',
+            }
+            if (nameSplit[0] == 'load_cell') {
+                output.push({
+                    ...basis,
+                    value: value.force_g ?? NaN,
+                    unit: 'g',
+                })
+            } else {
+                output.push(basis)
+            }
+        }
+
+        output.sort((a, b) => {
+            if (a.type < b.type) return -1
+            if (a.type > b.type) return 1
+
+            if (a.unit < b.unit) return -1
+            if (a.unit > b.unit) return 1
+
+            const nameA = a.name.toUpperCase()
+            const nameB = b.name.toUpperCase()
+
+            if (nameA < nameB) return -1
+            if (nameA > nameB) return 1
+
+            return 0
+        })
+
+        return output
+    },
+
     getAvailableHeaters: (state) => {
         return state.heaters?.available_heaters ?? []
     },
@@ -385,7 +360,7 @@ export const getters: GetterTree<PrinterState, RootState> = {
     },
 
     getFilamentSensors: (state) => {
-        const sensorObjectNames = ['filament_switch_sensor', 'filament_motion_sensor']
+        const sensorObjectNames = ['filament_switch_sensor', 'filament_motion_sensor', 'hall_filament_width_sensor']
         const sensors: PrinterStateFilamentSensors[] = []
 
         for (const [key, value] of Object.entries(state)) {
@@ -393,9 +368,11 @@ export const getters: GetterTree<PrinterState, RootState> = {
 
             if (sensorObjectNames.includes(nameSplit[0])) {
                 sensors.push({
-                    name: nameSplit[1],
+                    type: nameSplit[0],
+                    name: nameSplit[1] ?? nameSplit[0],
                     enabled: value.enabled,
                     filament_detected: value.filament_detected,
+                    filament_diameter: value.Diameter,
                 })
             }
         }
@@ -409,7 +386,9 @@ export const getters: GetterTree<PrinterState, RootState> = {
         Object.keys(state).forEach((key) => {
             if (key === 'mcu' || key.startsWith('mcu ')) {
                 const mcu = state[key]
-                const versionOutput = (mcu.mcu_version ?? 'unknown').split('-').slice(0, 4).join('-')
+                let versionOutput = (mcu.mcu_version ?? 'unknown').split('-').slice(0, 4).join('-')
+
+                if ('app' in mcu && mcu.app !== 'Klipper') versionOutput = mcu.app + ' ' + versionOutput
 
                 let load = 0
                 if (mcu.last_stats?.mcu_task_avg && mcu.last_stats?.mcu_task_stddev) {
@@ -765,9 +744,19 @@ export const getters: GetterTree<PrinterState, RootState> = {
     },
 
     existsZtilt: (state) => {
-        if (!state.configfile?.settings) return false
+        // check for new Klipper gcode.commands for Z_TILT_ADJUST command
+        const commands = state.gcode?.commands ?? null
+        if (commands) {
+            return 'Z_TILT_ADJUST' in commands
+        }
 
-        return 'z_tilt' in state.configfile.settings
+        // fallback for older Klipper versions
+        const settings = state.configfile?.settings ?? null
+        if (settings) {
+            return 'z_tilt' in settings
+        }
+
+        return false
     },
 
     existsBedTilt: (state) => {

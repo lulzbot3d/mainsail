@@ -31,11 +31,8 @@ import { use } from 'echarts/core'
 import { SVGRenderer } from 'echarts/renderers'
 import { BarChart, LineChart, PieChart } from 'echarts/charts'
 import { DatasetComponent, GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-// vue-resize
-import 'vue-resize/dist/vue-resize.css'
-// @ts-ignore
-import VueResize from 'vue-resize'
-import { defaultTheme } from './store/variables'
+
+import { defaultMode } from './store/variables'
 
 Vue.config.productionTip = false
 
@@ -62,24 +59,24 @@ Vue.use(OverlayScrollbarsPlugin, {
 use([SVGRenderer, LineChart, BarChart, LegendComponent, PieChart, DatasetComponent, GridComponent, TooltipComponent])
 Vue.component('EChart', ECharts)
 
-Vue.use(VueResize)
-
 const initLoad = async () => {
     try {
+        // get base url. by default, it is '/'
+        const base = import.meta.env.BASE_URL ?? '/'
+
         //load config.json
-        const res = await fetch('/config.json')
+        const res = await fetch(`${base}config.json`)
         const file = (await res.json()) as Record<string, unknown>
 
         window.console.debug('Loaded config.json')
 
         await store.dispatch('importConfigJson', file)
-        if ('defaultLocale' in file) {
-            await setAndLoadLocale(file.defaultLocale as string)
-        }
+        const locale = (file.defaultLocale ?? 'en') as string
+        await setAndLoadLocale(locale)
 
-        // Handle theme outside of store init and before vue mount for consistency in dialog
-        const theme = file.defaultTheme ?? defaultTheme
-        vuetify.framework.theme.dark = theme !== 'light'
+        // Handle mode outside store init and before vue mount for consistency in dialog
+        const mode = file.defaultMode ?? defaultMode
+        vuetify.framework.theme.dark = mode !== 'light'
     } catch (e) {
         window.console.error('Failed to load config.json')
         window.console.error(e)

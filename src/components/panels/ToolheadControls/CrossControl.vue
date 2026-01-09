@@ -47,9 +47,9 @@
                             </v-col>
                         </v-row>
                         <v-row dense>
-                            <v-col cols="3" class="p-rel"> <!-- X left -->
+                            <v-col cols="3" class="position-relative">
                                 <v-btn
-                                    class="btnMinWidthAuto fill-width p-abs"
+                                    class="btnMinWidthAuto fill-width position-absolute"
                                     style="top: -50%; width: calc(100% - 8px)"
                                     :disabled="
                                         !xAxisHomed ||
@@ -76,9 +76,9 @@
                                     <v-icon>{{ mdiChevronDown }}</v-icon>
                                 </v-btn>
                             </v-col>
-                            <v-col cols="3" class="p-rel"> <!-- X Right -->
+                            <v-col cols="3" class="position-relative">
                                 <v-btn
-                                    class="btnMinWidthAuto fill-width p-abs"
+                                    class="btnMinWidthAuto fill-width position-absolute"
                                     style="top: -50%; width: calc(100% - 8px)"
                                     :disabled="
                                         !xAxisHomed ||
@@ -381,10 +381,6 @@ export default class CrossControl extends Mixins(BaseMixin, ControlMixin) {
     mdiChevronDown = mdiChevronDown
     mdiEngineOff = mdiEngineOff
     mdiHome = mdiHome
-
-    get actionButton(): string {
-        return this.$store.state.gui.control.actionButton ?? this.defaultActionButton
-    }
 
     /**
      * Step size selection

@@ -1,18 +1,19 @@
 <template>
     <div class="vue-codemirror">
-        <div ref="codemirror" v-observe-visibility="visibilityChanged"></div>
+        <div ref="editor" v-observe-visibility="visibilityChanged"></div>
     </div>
 </template>
 
 <script lang="ts">
-// Inspired by these repo: https://github.com/surmon-china/vue-codemirror
+// Inspired by this repo: https://github.com/surmon-china/vue-codemirror
 
-import { Component, Mixins, Prop, Watch } from 'vue-property-decorator'
+import { Component, Mixins, Prop, Ref, Watch } from 'vue-property-decorator'
 import BaseMixin from '../mixins/base'
+import ThemeMixin from '../mixins/theme'
 import { basicSetup } from 'codemirror'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState } from '@codemirror/state'
-import { vscodeDark } from '@uiw/codemirror-theme-vscode'
+import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
 import { StreamLanguage } from '@codemirror/language'
 import { klipper_config } from '@/plugins/StreamParserKlipperConfig'
 import { gcode } from '@/plugins/StreamParserGcode'
@@ -22,14 +23,12 @@ import { css } from '@codemirror/lang-css'
 import { indentUnit } from '@codemirror/language'
 
 @Component
-export default class Codemirror extends Mixins(BaseMixin) {
+export default class Codemirror extends Mixins(BaseMixin, ThemeMixin) {
     private content = ''
     private codemirror: null | EditorView = null
     private cminstance: null | EditorView = null
 
-    declare $refs: {
-        codemirror: HTMLElement
-    }
+    @Ref('editor') editor!: HTMLElement
 
     @Prop({ required: false, default: '' })
     declare readonly code: string
@@ -65,7 +64,7 @@ export default class Codemirror extends Mixins(BaseMixin) {
 
     initialize() {
         this.codemirror = new EditorView({
-            parent: this.$refs.codemirror,
+            parent: this.editor,
         })
         this.cminstance = this.codemirror
 
@@ -82,12 +81,16 @@ export default class Codemirror extends Mixins(BaseMixin) {
 
     get cmExtensions() {
         const extensions = [
-            EditorView.theme({}, { dark: true }),
+            EditorView.theme({}, { dark: this.themeMode === 'dark' }),
             basicSetup,
-            vscodeDark,
+            this.vscodeTheme,
             indentUnit.of(' '.repeat(this.tabSize)),
             keymap.of([indentWithTab]),
             EditorView.updateListener.of((update) => {
+                if (update.selectionSet) {
+                    const line = this.cminstance?.state?.doc.lineAt(this.cminstance?.state?.selection.main.head).number
+                    this.$emit('lineChange', line)
+                }
                 this.content = update.state?.doc.toString()
                 if (this.$emit) {
                     this.$emit('input', this.content)
@@ -109,6 +112,20 @@ export default class Codemirror extends Mixins(BaseMixin) {
 
     get tabSize() {
         return this.$store.state.gui.editor.tabSize || 2
+    }
+
+    get vscodeTheme() {
+        return this.themeMode === 'dark' ? vscodeDark : vscodeLight
+    }
+
+    gotoLine(line: number) {
+        const l = this.cminstance?.state?.doc.line(line)
+        if (!l) return
+
+        this.cminstance?.dispatch({
+            selection: { head: l.from, anchor: l.to },
+            scrollIntoView: true,
+        })
     }
 }
 </script>

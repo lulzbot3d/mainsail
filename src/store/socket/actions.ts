@@ -135,6 +135,10 @@ export const actions: ActionTree<SocketState, RootState> = {
                 dispatch('server/spoolman/getActiveSpoolId', payload.params[0], { root: true })
                 break
 
+            case 'notify_sensor_update':
+                dispatch('server/sensor/updateSensors', payload.params[0], { root: true })
+                break
+
             default:
                 window.console.debug(payload)
         }
@@ -168,5 +172,9 @@ export const actions: ActionTree<SocketState, RootState> = {
 
     reportDebug(_, payload) {
         window.console.log(payload)
+    },
+
+    setConnectionFailed({ commit }, payload) {
+        commit('setDisconnected', payload)
     },
 }

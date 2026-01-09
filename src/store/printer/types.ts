@@ -6,21 +6,9 @@ export interface VTextareaType extends HTMLInputElement {
     }
 }
 
-export interface CommandHelp {
-    command: string
-    commandLow: string
-    description?: string | Record<string, unknown>
-}
-
-export interface ConsoleCommandHelp {
-    command: CommandHelp | null
-    original: string
-}
-
 export interface PrinterState {
     // eslint-disable-next-line
     [key: string]: any
-    helplist?: CommandHelp[]
     tempHistory?: PrinterTempHistoryState
 }
 
@@ -121,19 +109,6 @@ export interface PrinterStateLight {
     singleChannelTarget: number | null
 }
 
-export interface PrinterStateLight {
-    name: string
-    type: 'led' | 'neopixel' | 'dotstar' | 'pca9533' | 'pca9632'
-    colorOrder: string
-    chainCount: number
-    initialRed: number | null
-    initialGreen: number | null
-    initialBlue: number | null
-    initialWhite: number | null
-    colorData: number[][]
-    singleChannelTarget: number | null
-}
-
 export interface PrinterStateMiscellaneous {
     name: string
     type: string
@@ -150,10 +125,19 @@ export interface PrinterStateMiscellaneous {
     max_power?: number
 }
 
+export interface PrinterStateMiscellaneousSensor {
+    type: string
+    name: string
+    value: number
+    unit: string
+}
+
 export interface PrinterStateFilamentSensors {
+    type: string
     name: string
     enabled: boolean
     filament_detected: boolean
+    filament_diameter?: number
 }
 
 export interface PrinterStateBedMesh {
@@ -251,12 +235,6 @@ export interface PrinterStateExtruderStepper {
     key: string
     name: string
     extruder: number
-}
-
-export interface PrinterStateToolchangeMacro {
-    name: string
-    active: boolean
-    color: string
 }
 
 export interface PrinterGetterObject {

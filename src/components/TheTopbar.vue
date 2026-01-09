@@ -3,7 +3,7 @@
         <v-app-bar app elevate-on-scroll :color="logoColor" :height="topbarHeight" class="topbar pa-0" clipped-left>
             <v-app-bar-nav-icon tile @click.stop="naviDrawer = !naviDrawer" />
             <router-link to="/">
-                <inline-svg v-if="sidebarLogo && isSvgLogo" :src="'http:' + sidebarLogo" :class="logoClasses" />
+                <inline-svg v-if="sidebarLogo && isSvgLogo" :src="sidebarLogo" :class="logoClasses" />
                 <img v-else-if="sidebarLogo" :src="sidebarLogo" :class="logoClasses" alt="Logo" />
                 <mainsail-logo v-else :color="logoColor" :class="logoClasses" router to="/" :ripple="false" />
             </router-link>
@@ -103,7 +103,7 @@
             <the-settings-menu />
             <the-top-corner-menu />
         </v-app-bar>
-        <v-snackbar v-model="uploadSnackbar.status" :timeout="-1" :value="true" fixed right bottom>
+        <v-snackbar v-model="uploadSnackbar.status" :timeout="-1" fixed right bottom>
             <strong>{{ $t('App.TopBar.Uploading') }} {{ uploadSnackbar.filename }}</strong>
             <br />
             {{ Math.round(uploadSnackbar.percent) }} % @ {{ formatFilesize(Math.round(uploadSnackbar.speed)) }}/s
@@ -136,6 +136,7 @@ import { topbarHeight } from '@/store/variables'
 import { mdiAlertOctagonOutline, mdiContentSave, mdiFileUpload, mdiClose, mdiCloseThick, mdiPause, mdiPlay, mdiStop } from '@mdi/js'
 import EmergencyStopDialog from '@/components/dialogs/EmergencyStopDialog.vue'
 import InlineSvg from 'vue-inline-svg'
+import ThemeMixin from '@/components/mixins/theme'
 
 type uploadSnackbar = {
     status: boolean
@@ -158,7 +159,7 @@ type uploadSnackbar = {
         TheNotificationMenu,
     },
 })
-export default class TheTopbar extends Mixins(BaseMixin) {
+export default class TheTopbar extends Mixins(BaseMixin, ThemeMixin) {
     mdiAlertOctagonOutline = mdiAlertOctagonOutline
     mdiContentSave = mdiContentSave
     mdiFileUpload = mdiFileUpload
@@ -229,10 +230,6 @@ export default class TheTopbar extends Mixins(BaseMixin) {
         return this.$store.state.printer.hostname
     }
 
-    get boolWideNavDrawer() {
-        return this.$store.state.gui.uiSettings.boolWideNavDrawer ?? false
-    }
-
     get countPrinters() {
         return this.$store.getters['farm/countPrinters']
     }
@@ -241,12 +238,8 @@ export default class TheTopbar extends Mixins(BaseMixin) {
         return this.$store.state.gui.uiSettings.boolHideUploadAndPrintButton ?? false
     }
 
-    get sidebarLogo(): string {
-        return this.$store.getters['files/getSidebarLogo']
-    }
-
     get isSvgLogo() {
-        return this.sidebarLogo.includes('.svg?timestamp=')
+        return this.sidebarLogo.includes('.svg?timestamp=') || this.sidebarLogo.endsWith('.svg')
     }
 
     get logoColor(): string {

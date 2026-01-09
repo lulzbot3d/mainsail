@@ -1,10 +1,24 @@
 import { GetterTree } from 'vuex'
 import { GuiState } from '@/store/gui/types'
 import { GuiMacrosStateMacrogroup } from '@/store/gui/macros/types'
-import { allDashboardPanels } from '@/store/variables'
+import { allDashboardPanels, defaultTheme, themes } from '@/store/variables'
+import { Theme } from '@/store/types'
 
 // eslint-disable-next-line
 export const getters: GetterTree<GuiState, any> = {
+    theme: (state): string => {
+        const theme = state.uiSettings.theme
+
+        // return defaultTheme, if theme doesnt exists
+        if (themes.findIndex((tmp: Theme) => tmp.name === theme) === -1) return defaultTheme
+
+        return theme
+    },
+
+    getTheme: (state, getters): Theme => {
+        return themes.find((theme: Theme) => theme.name === getters.theme) ?? themes[0]
+    },
+
     getDatasetValue: (state) => (payload: { name: string; type: string }) => {
         if (
             payload.name in state.view.tempchart.datasetSettings &&
@@ -28,7 +42,7 @@ export const getters: GetterTree<GuiState, any> = {
 
     getPanelExpand: (state) => (name: string, viewport: string) => {
         if ('dashboard' in state && viewport in state.dashboard.nonExpandPanels) {
-            return !state.dashboard.nonExpandPanels[viewport].includes(name) ?? true
+            return !state.dashboard.nonExpandPanels[viewport].includes(name)
         }
 
         return true
@@ -75,6 +89,16 @@ export const getters: GetterTree<GuiState, any> = {
         // remove spoolman panel, if no spoolman component exists in moonraker
         if (!rootState.server.components.includes('spoolman')) {
             allPanels = allPanels.filter((name) => name !== 'spoolman')
+        }
+
+        // remove afc panel, if no AFC module exists in Klipper
+        if (!rootState.printer?.AFC) {
+            allPanels = allPanels.filter((name) => name !== 'afc')
+        }
+
+        // remove mmu panel, if no Happy Hare exists in Klipper
+        if (!rootState.printer?.mmu) {
+            allPanels = allPanels.filter((name) => name !== 'mmu')
         }
 
         return allPanels

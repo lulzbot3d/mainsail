@@ -62,6 +62,7 @@ export interface GuiState {
         confirmUnsavedChanges: boolean
         klipperRestartMethod: 'FIRMWARE_RESTART' | 'RESTART'
         tabSize: number
+        fileStructureSidebar: boolean
     }
     gcodeViewer: {
         extruderColors: string[]
@@ -98,7 +99,8 @@ export interface GuiState {
     presets?: GuiPresetsState
     remoteprinters?: GuiRemoteprintersState
     uiSettings: {
-        theme: 'dark' | 'light'
+        mode: 'dark' | 'light'
+        theme: string
         logo: string
         primary: string
         displayCancelPrint: boolean
@@ -107,6 +109,7 @@ export interface GuiState {
         confirmOnEmergencyStop: boolean
         confirmOnCoolDown: boolean
         confirmOnPowerDeviceChange: boolean
+        confirmOnCancelJob: boolean
         boolBigThumbnail: boolean
         bigThumbnailBackground: string
         boolWideNavDrawer: boolean
@@ -122,8 +125,21 @@ export interface GuiState {
         boolScrewsTiltAdjustDialog: boolean
         tempchartHeight: number
         hideUpdateWarnings: boolean
+        printstatusThumbnailZoom: boolean
+        dashboardFilesLimit: number
+        dashboardFilesFilter: GuiStateUiSettingsDashboardFilesFilter[]
+        dashboardHistoryLimit: number
+        hideOtherInstances: boolean
     }
     view: {
+        afc: {
+            hiddenExtruders: string[]
+            hiddenUnits: string[]
+            showFilamentName: boolean
+            showLaneInfinite: boolean
+            showUnitIcons: boolean
+            showTd1Color: boolean
+        }
         blockFileUpload: boolean
         configfiles: {
             countPerPage: number
@@ -144,6 +160,7 @@ export interface GuiState {
         }
         gcodefiles: {
             countPerPage: number
+            search: string
             sortBy: string
             sortDesc: boolean
             showHiddenFiles: boolean
@@ -204,6 +221,15 @@ export interface GuiState {
                 page: string
             }
         }
+        mmu: {
+            showClogDetection: boolean
+            showTtgMap: boolean
+            showDetails: boolean
+            largeFilamentStatus: boolean
+            showLogos: boolean
+            showName: boolean
+            showUnavailableSpoolColor: boolean
+        }
     }
 }
 
@@ -211,3 +237,5 @@ export interface GuiStateLayoutoption {
     name: string
     visible: boolean
 }
+
+export type GuiStateUiSettingsDashboardFilesFilter = 'new' | 'failed' | 'completed'

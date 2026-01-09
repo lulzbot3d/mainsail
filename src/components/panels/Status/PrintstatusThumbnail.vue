@@ -1,5 +1,5 @@
 <template>
-    <div v-if="current_filename" class="statusPanel-printstatus-thumbnail">
+    <div v-if="current_filename" ref="wrapper" class="statusPanel-printstatus-thumbnail">
         <v-img
             v-if="boolBigThumbnail"
             ref="bigThumbnail"
@@ -8,13 +8,11 @@
             class="d-flex align-end statusPanel-big-thumbnail"
             height="200"
             :style="thumbnailStyle"
-            @focus="focusBigThumbnail"
-            @blur="blurBigThumbnail">
-            <v-card-title
-                class="white--text py-2 px-2"
-                style="background-color: rgba(0, 0, 0, 0.3); backdrop-filter: blur(3px)">
+            @focus="focus = true"
+            @blur="focus = false">
+            <v-card-title class="white--text py-2 px-2" :style="styleThumbnailOverlay">
                 <v-row>
-                    <v-col style="width: 100px">
+                    <v-col>
                         <span class="subtitle-2 text-truncate px-0 text--disabled d-block">
                             <v-icon small class="mr-2">{{ mdiFileOutline }}</v-icon>
                             {{ current_filename }}
@@ -78,26 +76,30 @@
                 </v-row>
             </v-container>
         </template>
-        <resize-observer @notify="handleResize" />
     </div>
 </template>
 
 <script lang="ts">
 import Component from 'vue-class-component'
-import { Mixins } from 'vue-property-decorator'
+import { Mixins, Ref, Watch } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import { defaultBigThumbnailBackground, thumbnailBigMin, thumbnailSmallMax, thumbnailSmallMin } from '@/store/variables'
 import { mdiFileOutline, mdiFile } from '@mdi/js'
 import { Debounce } from 'vue-debounce-decorator'
+import { escapePath } from '@/plugins/helpers'
+import Vue from 'vue'
 
 @Component({})
 export default class StatusPanelPrintstatusThumbnail extends Mixins(BaseMixin) {
     mdiFileOutline = mdiFileOutline
     mdiFile = mdiFile
 
-    declare $refs: {
-        bigThumbnail: any
-    }
+    focus = false
+    thumbnailFactor = 0
+    resizeObserver: ResizeObserver | null = null
+
+    @Ref() readonly wrapper!: HTMLDivElement
+    @Ref() readonly bigThumbnail!: Vue
 
     get current_filename() {
         return this.$store.state.printer.print_stats?.filename ?? ''
@@ -118,7 +120,7 @@ export default class StatusPanelPrintstatusThumbnail extends Mixins(BaseMixin) {
                 }
 
                 if (thumbnail && 'relative_path' in thumbnail) {
-                    return `${this.apiUrl}/server/files/gcodes/${encodeURI(
+                    return `${this.apiUrl}/server/files/gcodes/${escapePath(
                         relative_url + thumbnail.relative_path
                     )}?timestamp=${this.current_file.modified}`
                 }
@@ -169,7 +171,7 @@ export default class StatusPanelPrintstatusThumbnail extends Mixins(BaseMixin) {
                 }
 
                 if (thumbnail && 'relative_path' in thumbnail) {
-                    return `${this.apiUrl}/server/files/gcodes/${encodeURI(
+                    return `${this.apiUrl}/server/files/gcodes/${escapePath(
                         relative_url + thumbnail.relative_path
                     )}?timestamp=${this.current_file.modified}`
                 }
@@ -190,35 +192,82 @@ export default class StatusPanelPrintstatusThumbnail extends Mixins(BaseMixin) {
     }
 
     get thumbnailStyle() {
+        let output: { height: string; backgroundColor?: string } = {
+            height: '200px',
+        }
+
+        if (!this.printstatusThumbnailZoom) {
+            output.height = '100%'
+        } else if (this.focus && this.thumbnailBlurHeight > 0) {
+            output.height = `${this.thumbnailBlurHeight}px`
+        }
+
         if (defaultBigThumbnailBackground.toLowerCase() !== this.bigThumbnailBackground.toLowerCase()) {
-            return { backgroundColor: this.bigThumbnailBackground }
+            output.backgroundColor = this.bigThumbnailBackground
+
+            return output
         }
 
-        return {}
+        return output
     }
 
-    focusBigThumbnail() {
-        if (this.$refs.bigThumbnail) {
-            const clientWidth = this.$refs.bigThumbnail.$el.clientWidth
-            const thumbnailWidth = this.thumbnailBigWidth
-            const factor = clientWidth / thumbnailWidth
-
-            this.$refs.bigThumbnail.$el.style.height = (this.thumbnailBigHeight * factor).toFixed() + 'px'
+    get styleThumbnailOverlay() {
+        const style = {
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            backdropFilter: 'blur(3px)',
         }
+
+        if (!this.$vuetify.theme.dark) {
+            style.backgroundColor = 'rgba(255, 255, 255, 0.3)'
+        }
+
+        return style
     }
 
-    blurBigThumbnail() {
-        if (this.$refs.bigThumbnail) {
-            this.$refs.bigThumbnail.$el.style.height = '200px'
-        }
+    get thumbnailBlurHeight() {
+        if (this.thumbnailFactor === 0) return 0
+
+        return (this.thumbnailBigHeight * this.thumbnailFactor).toFixed()
+    }
+
+    get printstatusThumbnailZoom() {
+        return this.$store.state.gui.uiSettings.printstatusThumbnailZoom ?? true
+    }
+
+    mounted() {
+        this.setupResizeObserver()
+    }
+
+    beforeDestroy() {
+        this.resizeObserver?.disconnect()
+    }
+
+    calcThumbnailFactor() {
+        const thumbnailClientWidth = this.bigThumbnail?.$el.clientWidth ?? 0
+        if (!thumbnailClientWidth || !this.thumbnailBigWidth) this.thumbnailFactor = 0
+
+        return (this.thumbnailFactor = thumbnailClientWidth / this.thumbnailBigWidth)
+    }
+
+    setupResizeObserver() {
+        this.resizeObserver?.disconnect()
+
+        if (!this.wrapper) return
+
+        this.resizeObserver = new ResizeObserver(() => this.handleResize())
+        this.resizeObserver.observe(this.wrapper)
     }
 
     @Debounce(200)
     handleResize() {
         this.$nextTick(() => {
-            const isFocused = document.activeElement === this.$refs.bigThumbnail?.$el
-            if (isFocused) this.focusBigThumbnail()
+            this.calcThumbnailFactor()
         })
+    }
+
+    @Watch('current_filename')
+    onCurrentFilenameChanged() {
+        this.$nextTick(() => this.calcThumbnailFactor())
     }
 }
 </script>
@@ -230,5 +279,10 @@ export default class StatusPanelPrintstatusThumbnail extends Mixins(BaseMixin) {
 
 .statusPanel-printstatus-thumbnail {
     position: relative;
+}
+
+.statusPanel-thumbnail-overlay {
+    background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(3px);
 }
 </style>

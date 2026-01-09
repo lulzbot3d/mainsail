@@ -3,7 +3,13 @@ import { Module } from 'vuex'
 import { actions } from '@/store/gui/actions'
 import { mutations } from '@/store/gui/mutations'
 import { getters } from '@/store/gui/getters'
-import { defaultTheme, defaultLogoColor, defaultPrimaryColor, defaultBigThumbnailBackground } from '@/store/variables'
+import {
+    defaultTheme,
+    defaultLogoColor,
+    defaultPrimaryColor,
+    defaultBigThumbnailBackground,
+    defaultMode,
+} from '@/store/variables'
 
 // load modules
 import { console } from '@/store/gui/console'
@@ -116,6 +122,7 @@ export const getDefaultState = (): GuiState => {
             confirmUnsavedChanges: true,
             klipperRestartMethod: 'FIRMWARE_RESTART',
             tabSize: 2,
+            fileStructureSidebar: true,
         },
         gcodeViewer: {
             extruderColors: ['#E76F51FF', '#F4A261FF', '#E9C46AFF', '#2A9D8FFF', '#264653FF'],
@@ -150,6 +157,7 @@ export const getDefaultState = (): GuiState => {
             entries: [],
         },
         uiSettings: {
+            mode: defaultMode,
             theme: defaultTheme,
             logo: defaultLogoColor,
             primary: defaultPrimaryColor,
@@ -159,6 +167,7 @@ export const getDefaultState = (): GuiState => {
             confirmOnEmergencyStop: false,
             confirmOnCoolDown: false,
             confirmOnPowerDeviceChange: false,
+            confirmOnCancelJob: false,
             boolBigThumbnail: true,
             bigThumbnailBackground: defaultBigThumbnailBackground,
             boolWideNavDrawer: false,
@@ -174,8 +183,21 @@ export const getDefaultState = (): GuiState => {
             boolScrewsTiltAdjustDialog: true,
             tempchartHeight: 250,
             hideUpdateWarnings: false,
+            printstatusThumbnailZoom: true,
+            dashboardFilesLimit: 5,
+            dashboardFilesFilter: ['new', 'failed', 'completed'],
+            dashboardHistoryLimit: 5,
+            hideOtherInstances: false,
         },
         view: {
+            afc: {
+                hiddenExtruders: [],
+                hiddenUnits: [],
+                showFilamentName: false,
+                showLaneInfinite: true,
+                showUnitIcons: true,
+                showTd1Color: true,
+            },
             blockFileUpload: false,
             configfiles: {
                 countPerPage: 10,
@@ -196,17 +218,19 @@ export const getDefaultState = (): GuiState => {
             },
             gcodefiles: {
                 countPerPage: 10,
+                search: '',
                 sortBy: 'modified',
                 sortDesc: true,
                 showHiddenFiles: false,
                 showPrintedFiles: true,
-                hideMetadataColumns: [],
+                hideMetadataColumns: ['filament_name', 'filament_type', 'filament_weight_total'],
                 orderMetadataColumns: [
                     'size',
                     'modified',
                     'object_height',
                     'layer_height',
                     'nozzle_diameter',
+                    'filaments',
                     'filament_name',
                     'filament_type',
                     'filament_total',
@@ -251,6 +275,15 @@ export const getDefaultState = (): GuiState => {
                 countPerPage: 10,
             },
             lockedSliders: [],
+            mmu: {
+                showClogDetection: true,
+                showTtgMap: true,
+                showDetails: true,
+                largeFilamentStatus: false,
+                showLogos: true,
+                showName: true,
+                showUnavailableSpoolColor: false,
+            },
             tempchart: {
                 boolTempchart: true,
                 hiddenDataset: [],

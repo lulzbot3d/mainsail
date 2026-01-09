@@ -260,9 +260,9 @@
                     <img
                         v-if="dialogImage.item.url"
                         :src="dialogImage.item.url"
-                        style="max-height: 100%; width: auto; object-fit: contain"
+                        style="max-height: 100%; width: auto; max-width: 100%; object-fit: contain"
                         alt="image" />
-                    <div v-else-if="dialogImage.item.svg" class="fill-width" v-html="dialogImage.item.svg"></div>
+                    <div v-else-if="dialogImage.item.svg" class="fill-width" v-html="dialogImage.item.svg" />
                 </div>
             </panel>
         </v-dialog>
@@ -537,7 +537,7 @@
 import { Component, Mixins } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import ThemeMixin from '@/components/mixins/theme'
-import { formatFilesize, sortFiles } from '@/plugins/helpers'
+import { escapePath, formatFilesize, sortFiles } from '@/plugins/helpers'
 import { FileStateFile, FileStateGcodefile } from '@/store/files/types'
 import axios from 'axios'
 import Panel from '@/components/ui/Panel.vue'
@@ -1018,22 +1018,16 @@ export default class ConfigFilesPanel extends Mixins(BaseMixin, ThemeMixin) {
     }
 
     showContextMenu(e: any, item: FileStateFile) {
-        if (!this.contextMenu.shown) {
-            e?.preventDefault()
-            this.contextMenu.shown = true
-            this.contextMenu.x = e?.clientX || e?.pageX || window.screenX / 2
-            this.contextMenu.y = e?.clientY || e?.pageY || window.screenY / 2
-            this.contextMenu.item = item
-
-            this.$nextTick(() => {
-                this.contextMenu.shown = true
-            })
-        }
+        e?.preventDefault()
+        this.contextMenu.x = e?.clientX || e?.pageX || window.screenX / 2
+        this.contextMenu.y = e?.clientY || e?.pageY || window.screenY / 2
+        this.contextMenu.item = item
+        this.contextMenu.shown = true
     }
 
     downloadFile() {
         const filename = this.absolutePath + '/' + this.contextMenu.item.filename
-        const href = `${this.apiUrl}/server/files${encodeURI(filename)}`
+        const href = `${this.apiUrl}/server/files${escapePath(filename)}`
         window.open(href)
     }
 

@@ -14,15 +14,19 @@
                         dense />
                 </v-col>
                 <v-col class="offset-4 col-4 d-flex align-center justify-end">
-                    <template v-if="selectedJobs.length">
-                        <v-btn
-                            :title="$t('History.Delete')"
-                            color="error"
-                            class="px-2 minwidth-0 ml-3"
-                            @click="deleteSelectedDialog = true">
-                            <v-icon>{{ mdiDelete }}</v-icon>
-                        </v-btn>
-                    </template>
+                    <v-tooltip v-if="selectedJobs.length" top>
+                        <template #activator="{ on, attrs }">
+                            <v-btn
+                                color="error"
+                                class="px-2 minwidth-0 ml-3"
+                                v-bind="attrs"
+                                v-on="on"
+                                @click="deleteSelectedDialog = true">
+                                <v-icon>{{ mdiDelete }}</v-icon>
+                            </v-btn>
+                        </template>
+                        <span>{{ $t('History.Delete') }}</span>
+                    </v-tooltip>
                     <v-tooltip top>
                         <template #activator="{ on, attrs }">
                             <v-btn
@@ -58,9 +62,14 @@
                     </v-tooltip>
                     <v-menu :offset-y="true" :close-on-content-click="false">
                         <template #activator="{ on, attrs }">
-                            <v-btn class="px-2 minwidth-0 ml-3" v-bind="attrs" v-on="on">
-                                <v-icon>{{ mdiCog }}</v-icon>
-                            </v-btn>
+                            <v-tooltip top>
+                                <template #activator="{ on: onToolTip }">
+                                    <v-btn class="px-2 minwidth-0 ml-3" v-bind="attrs" v-on="{ ...on, ...onToolTip }">
+                                        <v-icon>{{ mdiCog }}</v-icon>
+                                    </v-btn>
+                                </template>
+                                <span>{{ $t('History.Settings') }}</span>
+                            </v-tooltip>
                         </template>
                         <v-list>
                             <v-list-item class="minHeight36">
@@ -80,11 +89,8 @@
                                     @change="showPrintJobs = !showPrintJobs" />
                             </v-list-item>
                             <v-divider />
-                            <template v-if="allPrintStatusArray.length">
-                                <v-list-item
-                                    v-for="status of allPrintStatusArray"
-                                    :key="status.key"
-                                    class="minHeight36">
+                            <template v-if="printStatusArray.length">
+                                <v-list-item v-for="status of printStatusArray" :key="status.name" class="minHeight36">
                                     <v-checkbox
                                         class="mt-0"
                                         hide-details
@@ -112,7 +118,7 @@
         </v-card-text>
         <v-divider class="mb-3" />
         <v-data-table
-            v-model="selectedJobs"
+            v-model="selectedJobsTable"
             :items="entries"
             class="history-jobs-table"
             :headers="filteredHeaders"
@@ -178,6 +184,8 @@ import HistoryListPanelAddMaintenance from '@/components/dialogs/HistoryListPane
 import { GuiMaintenanceStateEntry, HistoryListRowMaintenance } from '@/store/gui/maintenance/types'
 import HistoryListEntryMaintenance from '@/components/panels/History/HistoryListEntryMaintenance.vue'
 import HistoryListPanelDeleteSelectedDialog from '@/components/dialogs/HistoryListPanelDeleteSelectedDialog.vue'
+import HistoryMixin from '@/components/mixins/history'
+import HistoryStatsMixin from '@/components/mixins/historyStats'
 
 export type HistoryListPanelRow = HistoryListRowJob | HistoryListRowMaintenance
 
@@ -201,7 +209,7 @@ export interface HistoryListPanelCol {
         Panel,
     },
 })
-export default class HistoryListPanel extends Mixins(BaseMixin) {
+export default class HistoryListPanel extends Mixins(BaseMixin, HistoryMixin, HistoryStatsMixin) {
     mdiCloseThick = mdiCloseThick
     mdiCog = mdiCog
     mdiDatabaseArrowDownOutline = mdiDatabaseArrowDownOutline
@@ -222,10 +230,6 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
 
     get allLoaded() {
         return this.$store.state.server.history.all_loaded ?? false
-    }
-
-    get jobs() {
-        return this.$store.getters['server/history/getFilteredJobList'] ?? []
     }
 
     get maintenanceEntries() {
@@ -253,14 +257,6 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
         }
 
         return entries
-    }
-
-    get selectedJobs() {
-        return this.$store.state.gui.view.history.selectedJobs ?? []
-    }
-
-    set selectedJobs(newVal) {
-        this.$store.dispatch('gui/saveSettingWithoutUpload', { name: 'view.history.selectedJobs', value: newVal })
     }
 
     get headers() {
@@ -409,6 +405,16 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
             },
         ]
 
+        this.moonrakerHistoryFields.forEach((sensor) => {
+            headers.push({
+                text: sensor.desc,
+                value: sensor.name,
+                align: 'left',
+                configable: true,
+                visible: false,
+            })
+        })
+
         headers.forEach((header) => {
             if (header.visible && this.hideColums.includes(header.value)) {
                 header.visible = false
@@ -439,7 +445,7 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
     }
 
     get countPerPage() {
-        return this.$store.state.gui.view.historycountPerPage
+        return this.$store.state.gui.view.history.countPerPage ?? 10
     }
 
     set countPerPage(newVal) {
@@ -447,7 +453,7 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
     }
 
     get hideColums() {
-        return this.$store.state.gui.view.history.hideColums
+        return this.$store.state.gui.view.history.hideColums ?? []
     }
 
     set hideColums(newVal) {
@@ -471,6 +477,14 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
 
     set showPrintJobs(newVal) {
         this.$store.dispatch('gui/saveSetting', { name: 'view.history.showPrintJobs', value: newVal })
+    }
+
+    get selectedJobsTable() {
+        return this.$store.state.gui.view.history.selectedJobs ?? []
+    }
+
+    set selectedJobsTable(newVal) {
+        this.$store.dispatch('gui/saveSettingWithoutUpload', { name: 'view.history.selectedJobs', value: newVal })
     }
 
     refreshHistory() {
@@ -523,12 +537,7 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
     }
 
     changeStatusVisible(status: any) {
-        if (status.showInTable) {
-            this.$store.dispatch('gui/hideStatusInHistoryList', status.name)
-            return
-        }
-
-        this.$store.dispatch('gui/showStatusInHistoryList', status.name)
+        this.$store.dispatch('gui/toggleStatusInHistoryList', status.name)
     }
 
     exportHistory() {
@@ -544,6 +553,12 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
         row.push('status')
 
         this.tableFields.forEach((col) => {
+            if (col.value.startsWith('history_field_')) {
+                const sensorName = col.value.replace('history_field_', '')
+                row.push(sensorName)
+                return
+            }
+
             row.push(col.value)
         })
 
@@ -612,18 +627,9 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
                 row.push('job')
                 row.push(job.status)
 
-                this.tableFields
-                    .filter((header) => header.value !== 'slicer')
-                    .forEach((col) => {
-                        row.push(this.outputValue(col, job, csvSeperator))
-                    })
-
-                if (this.tableFields.find((header) => header.value === 'slicer')?.visible) {
-                    let slicerString = 'slicer' in job.metadata && job.metadata.slicer ? job.metadata.slicer : '--'
-                    if ('slicer_version' in job.metadata && job.metadata.slicer_version)
-                        slicerString += ' ' + job.metadata.slicer_version
-                    row.push(slicerString)
-                }
+                this.tableFields.forEach((col) => {
+                    row.push(this.outputValue(col, job, csvSeperator))
+                })
 
                 content.push(row)
             })
@@ -634,7 +640,7 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
         const csvContent =
             'data:text/csv;charset=utf-8,' +
             content.map((entry) =>
-                entry.map((field) => (field.indexOf(csvSeperator) === -1 ? field : `"${field}"`)).join(csvSeperator)
+                entry.map((field) => (field?.indexOf(csvSeperator) === -1 ? field : `"${field}"`)).join(csvSeperator)
             ).join('\n')
 
         const link = document.createElement('a')
@@ -650,6 +656,36 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
         //@ts-ignore
         let value = col.value in job ? job[col.value] : null
         if (value === null) value = col.value in job.metadata ? job.metadata[col.value] : null
+
+        if (col.value === 'slicer') {
+            let slicerString = 'slicer' in job.metadata && job.metadata.slicer ? job.metadata.slicer : '--'
+            if ('slicer_version' in job.metadata && job.metadata.slicer_version)
+                slicerString += ' ' + job.metadata.slicer_version
+
+            if (csvSeperator !== null && value.includes(csvSeperator)) return '"' + slicerString + '"'
+
+            return slicerString
+        }
+
+        if (col.value.startsWith('history_field_')) {
+            const sensorName = col.value.replace('history_field_', '')
+            const sensor = job.auxiliary_data?.find((sensor) => sensor.name === sensorName)
+
+            let value = sensor?.value?.toString()
+
+            // return value, when it is not an array
+            if (sensor && !Array.isArray(sensor.value)) {
+                value = sensor.value?.toLocaleString(this.browserLocale, { useGrouping: false }) ?? 0
+            }
+
+            // return empty string, when value is null
+            if (!value) return '--'
+
+            // escape fields with the csvSeperator in the content
+            if (csvSeperator !== null && value?.includes(csvSeperator)) return `"${value}"`
+
+            return value
+        }
 
         switch (col.outputType) {
             case 'date':
