@@ -118,12 +118,12 @@
         </template>
         <!-- EXTRUSION FACTOR SLIDER -->
         <template v-if="showExtrusionFactor">
-            <v-divider v-if="showTools" />
+            <v-divider v-if="showTools || showExtrusionFactor" />
             <extrusion-factor-settings />
         </template>
         <!-- PRESSURE ADVANCE SETTINGS -->
         <template v-if="showPressureAdvance">
-            <v-divider v-if="showTools || showExtrusionFactor" />
+            <v-divider v-if="showTools || showPressureAdvance" />
             <extruder-pressure-advance-settings v-if="extruderSteppers.length === 0" />
             <template v-else>
                 <extruder-stepper-pressure-advance-settings
