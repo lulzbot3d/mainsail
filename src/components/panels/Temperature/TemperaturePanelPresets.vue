@@ -64,17 +64,16 @@ import Component from 'vue-class-component'
 import { Mixins } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import { GuiPresetsStatePreset } from '@/store/gui/presets/types'
-import { mdiFire, mdiMenuDown, mdiSnowflake, mdiCloseThick } from '@mdi/js'
-import CoolDownDialog from '@/components/dialogs/CoolDownDialog.vue'
+import { mdiFire, mdiMenuDown, mdiSnowflake } from '@mdi/js'
+import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 
 @Component({
-    components: { CoolDownDialog },
+    components: { ConfirmationDialog },
 })
 export default class TemperaturePanelPresets extends Mixins(BaseMixin) {
     mdiFire = mdiFire
     mdiMenuDown = mdiMenuDown
     mdiSnowflake = mdiSnowflake
-    mdiCloseThick = mdiCloseThick
 
     showCoolDownDialog = false
 
@@ -133,7 +132,6 @@ export default class TemperaturePanelPresets extends Mixins(BaseMixin) {
     }
 
     cooldown(): void {
-        this.showCoolDownDialog = false
         this.$store.dispatch('server/addEvent', { message: this.cooldownGcode, type: 'command' })
         this.$socket.emit('printer.gcode.script', { script: this.cooldownGcode })
     }
