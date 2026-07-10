@@ -180,13 +180,20 @@ export default class ZoffsetControl extends Mixins(BaseMixin, ZoffsetMixin) {
         this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'babySteppingClear' })
     }
 
-    saveZOffset(): void {
+    async saveZOffset(): Promise<void> {
         let gcode = this.offsetZSaveOption
         if (gcode === null) gcode = this.autoSaveZOffsetOption
 
         this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
         this.$socket.emit('printer.gcode.script', { script: gcode })
-        this.saveOffsetDialog = true
+
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        const gcode2 = 'SAVE_CONFIG RESTART=0'
+        this.$store.dispatch('server/addEvent', { message: gcode2, type: 'command' })
+        this.$socket.emit('printer.gcode.script', { script: gcode2 })
+
+        this.saveOffsetDialog = false
     }
 
     saveConfig(): void {
